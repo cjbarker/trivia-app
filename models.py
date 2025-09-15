@@ -57,6 +57,7 @@ class TriviaGame:
         self.questions = []
         self.current_question_index = 0
         self.game_started = False
+        self.game_paused = False
     
     def create_team(self, team_name, player_name):
         team = Team(team_name)
@@ -99,9 +100,23 @@ class TriviaGame:
             return {
                 'question_number': self.current_question_index + 1,
                 'total_questions': len(self.questions),
+                'game_started': self.game_started,
+                'game_paused': self.game_paused,
                 **question.to_dict()
             }
         return None
+    
+    def has_team_answered_question(self, team_id, question_index):
+        """Check if a team has already answered a specific question"""
+        if team_id not in self.teams:
+            return False
+        return question_index in self.teams[team_id].answers
+    
+    def get_team_answer(self, team_id, question_index):
+        """Get a team's answer for a specific question"""
+        if team_id not in self.teams:
+            return None
+        return self.teams[team_id].answers.get(question_index)
     
     def submit_answer(self, team_id, answer):
         if team_id not in self.teams:
@@ -109,6 +124,10 @@ class TriviaGame:
         
         if self.current_question_index >= len(self.questions):
             return {'success': False, 'error': 'No current question'}
+        
+        # Check if team has already answered this question
+        if self.has_team_answered_question(team_id, self.current_question_index):
+            return {'success': False, 'error': 'Question already answered'}
         
         question = self.questions[self.current_question_index]
         team = self.teams[team_id]
@@ -149,3 +168,103 @@ class TriviaGame:
         # Sort by score descending
         scoreboard.sort(key=lambda x: x['score'], reverse=True)
         return scoreboard
+    
+    def start_game(self):
+        self.game_started = True
+        self.game_paused = False
+        return {'success': True, 'message': 'Game started'}
+    
+    def stop_game(self):
+        self.game_started = False
+        self.game_paused = True
+        return {'success': True, 'message': 'Game stopped'}
+    
+    def pause_game(self):
+        if self.game_started:
+            self.game_paused = True
+            return {'success': True, 'message': 'Game paused'}
+        return {'success': False, 'message': 'Game is not started'}
+    
+    def resume_game(self):
+        if self.game_started:
+            self.game_paused = False
+            return {'success': True, 'message': 'Game resumed'}
+        return {'success': False, 'message': 'Game is not started'}
+    
+    def set_question(self, question_index):
+        if 0 <= question_index < len(self.questions):
+            self.current_question_index = question_index
+            return {'success': True, 'message': f'Set to question {question_index + 1}'}
+        return {'success': False, 'message': 'Invalid question index'}
+    
+    def get_game_status(self):
+        return {
+            'started': self.game_started,
+            'paused': self.game_paused,
+            'current_question': self.current_question_index + 1,
+            'total_questions': len(self.questions),
+            'teams_count': len(self.teams)
+        }
+    
+    def update_team_name(self, team_id, new_name):
+        """Update a team's name"""
+        if team_id not in self.teams:
+            return {'success': False, 'error': 'Team not found'}
+        
+        if not new_name or not new_name.strip():
+            return {'success': False, 'error': 'Team name cannot be empty'}
+        
+        self.teams[team_id].name = new_name.strip()
+        return {'success': True, 'message': f'Team name updated to "{new_name.strip()}"'}
+    
+    def add_player_to_team(self, team_id, player_name):
+        """Add a player to a team (admin function)"""
+        if team_id not in self.teams:
+            return {'success': False, 'error': 'Team not found'}
+        
+        if not player_name or not player_name.strip():
+            return {'success': False, 'error': 'Player name cannot be empty'}
+        
+        player_name = player_name.strip()
+        
+        # Check if player is already in this team
+        if player_name in self.teams[team_id].players:
+            return {'success': False, 'error': 'Player already in this team'}
+        
+        # Remove player from any other team first
+        current_team_id = self.find_player_team(player_name)
+        if current_team_id:
+            self.teams[current_team_id].remove_player(player_name)
+            # Remove team if it becomes empty
+            if self.teams[current_team_id].is_empty():
+                del self.teams[current_team_id]
+        
+        # Add to new team
+        self.teams[team_id].add_player(player_name)
+        return {'success': True, 'message': f'Added "{player_name}" to team'}
+    
+    def remove_player_from_team(self, team_id, player_name):
+        """Remove a player from a team (admin function)"""
+        if team_id not in self.teams:
+            return {'success': False, 'error': 'Team not found'}
+        
+        if not player_name or player_name not in self.teams[team_id].players:
+            return {'success': False, 'error': 'Player not found in this team'}
+        
+        self.teams[team_id].remove_player(player_name)
+        
+        # Remove team if it becomes empty
+        if self.teams[team_id].is_empty():
+            del self.teams[team_id]
+            return {'success': True, 'message': f'Removed "{player_name}" and deleted empty team'}
+        
+        return {'success': True, 'message': f'Removed "{player_name}" from team'}
+    
+    def delete_team(self, team_id):
+        """Delete an entire team (admin function)"""
+        if team_id not in self.teams:
+            return {'success': False, 'error': 'Team not found'}
+        
+        team_name = self.teams[team_id].name
+        del self.teams[team_id]
+        return {'success': True, 'message': f'Deleted team "{team_name}"'}

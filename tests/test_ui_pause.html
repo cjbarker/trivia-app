@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Pause UI Functionality</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; }
+        .button { padding: 10px 15px; margin: 5px; background: #007bff; color: white; border: none; cursor: pointer; }
+        .status { margin: 10px 0; padding: 10px; background: #f8f9fa; }
+        .success { background: #d4edda; color: #155724; }
+        .warning { background: #fff3cd; color: #856404; }
+        .error { background: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+    <h1>Admin Pause/Resume UI Test</h1>
+    
+    <div class="test-section">
+        <h2>Admin Controls</h2>
+        <button class="button" onclick="adminLogin()">Login as Admin</button>
+        <button class="button" onclick="startGame()">Start Game</button>
+        <button class="button" onclick="pauseGame()">Pause Game</button>
+        <button class="button" onclick="resumeGame()">Resume Game</button>
+        <button class="button" onclick="stopGame()">Stop Game</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>WebSocket Events</h2>
+        <div id="websocket-status" class="status">Not Connected</div>
+        <div id="events-log"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Expected Player UI States</h2>
+        <ul>
+            <li><strong>Game Running:</strong> Question section visible, answer section hidden</li>
+            <li><strong>Game Paused:</strong> Question section hidden, "Game Paused" message shown</li>
+            <li><strong>Game Resumed:</strong> Question section visible again, normal game state</li>
+            <li><strong>Game Stopped:</strong> "Game Stopped" message with final scoreboard</li>
+        </ul>
+    </div>
+    
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+    <script>
+        let adminSession = null;
+        const socket = io('http://localhost:5001');
+        
+        // WebSocket event handlers
+        socket.on('connect', function() {
+            document.getElementById('websocket-status').innerHTML = 
+                '<span class="success">Connected to WebSocket</span>';
+        });
+        
+        socket.on('game_paused', function(data) {
+            logEvent('game_paused', data);
+        });
+        
+        socket.on('game_resumed', function(data) {
+            logEvent('game_resumed', data);
+        });
+        
+        socket.on('game_stopped', function(data) {
+            logEvent('game_stopped', data);
+        });
+        
+        socket.on('game_status_update', function(data) {
+            logEvent('game_status_update', data);
+        });
+        
+        socket.on('new_question', function(data) {
+            logEvent('new_question', data);
+        });
+        
+        function logEvent(eventName, data) {
+            const log = document.getElementById('events-log');
+            const eventDiv = document.createElement('div');
+            eventDiv.innerHTML = `<strong>${new Date().toLocaleTimeString()}</strong> - ${eventName}: ${JSON.stringify(data)}`;
+            eventDiv.style.margin = '5px 0';
+            eventDiv.style.padding = '5px';
+            eventDiv.style.background = '#e9ecef';
+            eventDiv.style.fontSize = '12px';
+            log.appendChild(eventDiv);
+            log.scrollTop = log.scrollHeight;
+        }
+        
+        async function adminLogin() {
+            try {
+                const response = await fetch('http://localhost:5001/admin/login', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                    body: 'password=admin123',
+                    credentials: 'include'
+                });
+                
+                if (response.ok) {
+                    alert('✓ Admin login successful');
+                    adminSession = true;
+                } else {
+                    alert('❌ Admin login failed');
+                }
+            } catch (e) {
+                alert('❌ Error: ' + e.message);
+            }
+        }
+        
+        async function startGame() {
+            try {
+                const response = await fetch('http://localhost:5001/admin/api/game/start', {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+                const result = await response.json();
+                alert(result.success ? '✓ Game started' : '❌ Failed to start game');
+            } catch (e) {
+                alert('❌ Error: ' + e.message);
+            }
+        }
+        
+        async function pauseGame() {
+            try {
+                const response = await fetch('http://localhost:5001/admin/api/game/pause', {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+                const result = await response.json();
+                alert(result.success ? '✓ Game paused' : '❌ Failed to pause game');
+            } catch (e) {
+                alert('❌ Error: ' + e.message);
+            }
+        }
+        
+        async function resumeGame() {
+            try {
+                const response = await fetch('http://localhost:5001/admin/api/game/resume', {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+                const result = await response.json();
+                alert(result.success ? '✓ Game resumed' : '❌ Failed to resume game');
+            } catch (e) {
+                alert('❌ Error: ' + e.message);
+            }
+        }
+        
+        async function stopGame() {
+            try {
+                const response = await fetch('http://localhost:5001/admin/api/game/stop', {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+                const result = await response.json();
+                alert(result.success ? '✓ Game stopped' : '❌ Failed to stop game');
+            } catch (e) {
+                alert('❌ Error: ' + e.message);
+            }
+        }
+    </script>
+</body>
+</html>

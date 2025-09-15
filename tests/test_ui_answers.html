@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Answer Restriction UI</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; }
+        .button { padding: 10px 15px; margin: 5px; background: #007bff; color: white; border: none; cursor: pointer; }
+        .status { margin: 10px 0; padding: 10px; background: #f8f9fa; }
+    </style>
+</head>
+<body>
+    <h1>Answer Restriction UI Test</h1>
+    
+    <div class="test-section">
+        <h2>Test Instructions</h2>
+        <ol>
+            <li>Open the main trivia game in another tab (<a href="http://localhost:5001" target="_blank">http://localhost:5001</a>)</li>
+            <li>Create a team and navigate to the game page</li>
+            <li>Use the admin controls below to manipulate the game</li>
+            <li>In the game tab, observe the UI changes for answered vs unanswered questions</li>
+        </ol>
+    </div>
+    
+    <div class="test-section">
+        <h2>Admin Controls</h2>
+        <button class="button" onclick="adminLogin()">Login as Admin</button>
+        <button class="button" onclick="startGame()">Start Game</button>
+        <button class="button" onclick="nextQuestion()">Next Question</button>
+        <button class="button" onclick="setQuestion(1)">Go to Q1</button>
+        <button class="button" onclick="setQuestion(2)">Go to Q2</button>
+        <button class="button" onclick="setQuestion(3)">Go to Q3</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>Expected UI Behaviors</h2>
+        <ul>
+            <li><strong>Unanswered Questions:</strong> Normal input fields, visible submit button</li>
+            <li><strong>Answered Questions:</strong> Read-only fields showing submitted answer, hidden submit button</li>
+            <li><strong>Answer Submission:</strong> Should fail with error if question already answered</li>
+            <li><strong>Question Navigation:</strong> UI should update immediately when admin changes questions</li>
+        </ul>
+    </div>
+    
+    <div class="test-section">
+        <h2>Test Status</h2>
+        <div id="test-status">Ready to test</div>
+    </div>
+    
+    <script>
+        let adminLoggedIn = false;
+        
+        function updateStatus(message) {
+            document.getElementById('test-status').innerHTML = message;
+        }
+        
+        async function adminLogin() {
+            try {
+                const response = await fetch('http://localhost:5001/admin/login', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                    body: 'password=admin123',
+                    credentials: 'include'
+                });
+                
+                if (response.ok) {
+                    adminLoggedIn = true;
+                    updateStatus('✅ Admin logged in successfully');
+                } else {
+                    updateStatus('❌ Admin login failed');
+                }
+            } catch (e) {
+                updateStatus('❌ Error: ' + e.message);
+            }
+        }
+        
+        async function startGame() {
+            if (!adminLoggedIn) {
+                updateStatus('❌ Please login as admin first');
+                return;
+            }
+            
+            try {
+                const response = await fetch('http://localhost:5001/admin/api/game/start', {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+                const result = await response.json();
+                updateStatus(result.success ? '✅ Game started' : '❌ Failed to start game');
+            } catch (e) {
+                updateStatus('❌ Error: ' + e.message);
+            }
+        }
+        
+        async function nextQuestion() {
+            if (!adminLoggedIn) {
+                updateStatus('❌ Please login as admin first');
+                return;
+            }
+            
+            try {
+                const response = await fetch('http://localhost:5001/admin/api/next_question', {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+                const result = await response.json();
+                updateStatus(result.success ? '✅ Advanced to next question' : `❌ ${result.error || 'Failed to advance'}`);
+            } catch (e) {
+                updateStatus('❌ Error: ' + e.message);
+            }
+        }
+        
+        async function setQuestion(questionNumber) {
+            if (!adminLoggedIn) {
+                updateStatus('❌ Please login as admin first');
+                return;
+            }
+            
+            try {
+                const response = await fetch('http://localhost:5001/admin/api/set_question', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({question_number: questionNumber}),
+                    credentials: 'include'
+                });
+                const result = await response.json();
+                updateStatus(result.success ? `✅ Set to question ${questionNumber}` : `❌ ${result.message || 'Failed to set question'}`);
+            } catch (e) {
+                updateStatus('❌ Error: ' + e.message);
+            }
+        }
+    </script>
+</body>
+</html>

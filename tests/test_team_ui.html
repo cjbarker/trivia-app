@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Team Management UI</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; }
+        .button { padding: 10px 15px; margin: 5px; background: #007bff; color: white; border: none; cursor: pointer; }
+        .status { margin: 10px 0; padding: 10px; background: #f8f9fa; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+    <h1>Team Management UI Test</h1>
+    
+    <div class="test-section">
+        <h2>Setup Instructions</h2>
+        <ol>
+            <li>Open the main admin panel in another tab: <a href="http://localhost:5001/admin" target="_blank">Admin Panel</a></li>
+            <li>Login with password: <strong>admin123</strong></li>
+            <li>Use the controls below to create test teams</li>
+            <li>In the admin panel, verify that team management controls appear</li>
+            <li>Test all team management features: rename, add/remove players, delete teams</li>
+        </ol>
+    </div>
+    
+    <div class="test-section">
+        <h2>Test Setup Controls</h2>
+        <button class="button" onclick="createTestTeam('Team Alpha', 'Alice')">Create Team Alpha</button>
+        <button class="button" onclick="createTestTeam('Team Beta', 'Bob')">Create Team Beta</button>
+        <button class="button" onclick="createTestTeam('Team Gamma', 'Charlie')">Create Team Gamma</button>
+        <button class="button" onclick="addPlayerToTeam()">Add Random Player</button>
+        <button class="button" onclick="listTeams()">List All Teams</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>Expected Admin UI Features</h2>
+        <ul>
+            <li><strong>Team List:</strong> Shows all teams with "Manage" buttons</li>
+            <li><strong>Team Modal:</strong> Clicking "Manage" opens a modal with:
+                <ul>
+                    <li>Editable team name field with "Update Name" button</li>
+                    <li>List of players with "Remove" buttons for each player</li>
+                    <li>"Add Player" input field and button</li>
+                    <li>"Delete Team" button (red, on left side)</li>
+                    <li>"Close" button</li>
+                </ul>
+            </li>
+            <li><strong>Real-time Updates:</strong> Changes should be reflected immediately across all connected clients</li>
+        </ul>
+    </div>
+    
+    <div class="test-section">
+        <h2>Test Scenarios</h2>
+        <ol>
+            <li><strong>Rename Team:</strong> Change team name and verify it updates in real-time</li>
+            <li><strong>Add Player:</strong> Add a new player to a team</li>
+            <li><strong>Remove Player:</strong> Remove a player from a team</li>
+            <li><strong>Move Player:</strong> Add an existing player from another team (should move them)</li>
+            <li><strong>Delete Team:</strong> Delete an entire team</li>
+            <li><strong>Auto-Delete:</strong> Remove all players from a team (should auto-delete the team)</li>
+        </ol>
+    </div>
+    
+    <div class="test-section">
+        <h2>Test Status</h2>
+        <div id="test-status">Ready to test</div>
+    </div>
+    
+    <script>
+        let testTeamIds = [];
+        
+        function updateStatus(message, type = 'info') {
+            const statusDiv = document.getElementById('test-status');
+            statusDiv.innerHTML = message;
+            statusDiv.className = 'status ' + type;
+        }
+        
+        async function createTestTeam(teamName, playerName) {
+            try {
+                const response = await fetch('http://localhost:5001/api/teams', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({team_name: teamName, player_name: playerName})
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    testTeamIds.push(result.team_id);
+                    updateStatus(`✅ Created team "${teamName}" with player "${playerName}"`, 'success');
+                } else {
+                    updateStatus(`❌ Failed to create team: ${result.error}`, 'error');
+                }
+            } catch (e) {
+                updateStatus(`❌ Error: ${e.message}`, 'error');
+            }
+        }
+        
+        async function addPlayerToTeam() {
+            if (testTeamIds.length === 0) {
+                updateStatus('❌ Create a team first', 'error');
+                return;
+            }
+            
+            const randomNames = ['David', 'Emma', 'Frank', 'Grace', 'Henry', 'Ivy', 'Jack', 'Kate'];
+            const playerName = randomNames[Math.floor(Math.random() * randomNames.length)];
+            const teamId = testTeamIds[Math.floor(Math.random() * testTeamIds.length)];
+            
+            try {
+                const response = await fetch(`http://localhost:5001/api/teams/${teamId}/join`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({player_name: playerName})
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    updateStatus(`✅ Added player "${playerName}" to a team`, 'success');
+                } else {
+                    updateStatus(`❌ Failed to add player: ${result.error}`, 'error');
+                }
+            } catch (e) {
+                updateStatus(`❌ Error: ${e.message}`, 'error');
+            }
+        }
+        
+        async function listTeams() {
+            try {
+                const response = await fetch('http://localhost:5001/api/teams');
+                const teams = await response.json();
+                
+                const teamsList = teams.map(team => 
+                    `${team.name} (${team.players.join(', ')})`
+                ).join('<br>');
+                
+                updateStatus(`Current teams:<br>${teamsList || 'No teams'}`, 'info');
+            } catch (e) {
+                updateStatus(`❌ Error: ${e.message}`, 'error');
+            }
+        }
+    </script>
+</body>
+</html>

@@ -3,6 +3,7 @@ let currentQuestion = null;
 let selectedAnswer = null;
 
 document.addEventListener('DOMContentLoaded', function() {
+    checkTeamStatus();
     loadCurrentQuestion();
     loadScoreboard();
     setupEventListeners();
@@ -22,7 +23,47 @@ function setupEventListeners() {
         displayQuestion(question);
         document.getElementById('answer-result').style.display = 'none';
         document.getElementById('question-section').style.display = 'block';
+        updateGameStatus(question);
     });
+    socket.on('game_status_update', updateGameStatus);
+    socket.on('game_stopped', function(data) {
+        showGameStopped(data.scoreboard);
+    });
+    socket.on('game_paused', function(data) {
+        showGamePaused(data.message);
+    });
+    socket.on('game_resumed', function(data) {
+        hideGameStatus();
+        if (currentQuestion) {
+            displayQuestion(currentQuestion);
+            document.getElementById('question-section').style.display = 'block';
+            document.getElementById('answer-result').style.display = 'none';
+        }
+    });
+}
+
+async function checkTeamStatus() {
+    try {
+        const response = await fetch('/api/player/status');
+        const status = await response.json();
+        
+        if (!status.has_team) {
+            // Team no longer exists or player not in team, redirect to home
+            window.location.href = '/';
+            return;
+        }
+        
+        // Update team info display if available
+        const teamInfo = document.getElementById('team-info');
+        if (teamInfo) {
+            teamInfo.textContent = `${status.team_name} - ${status.player_name}`;
+        }
+        
+    } catch (error) {
+        console.error('Error checking team status:', error);
+        // On error, redirect to home to be safe
+        window.location.href = '/';
+    }
 }
 
 async function loadCurrentQuestion() {
@@ -33,6 +74,7 @@ async function loadCurrentQuestion() {
         if (question) {
             currentQuestion = question;
             displayQuestion(question);
+            updateGameStatus(question);
         } else {
             document.getElementById('question-text').textContent = 'No more questions available.';
         }
@@ -49,6 +91,16 @@ function displayQuestion(question) {
     const multipleChoiceDiv = document.getElementById('multiple-choice-options');
     const fillInBlankDiv = document.getElementById('fill-in-blank');
     const submitBtn = document.getElementById('submit-answer');
+    
+    // Reset submit button visibility and enable form elements
+    submitBtn.style.display = 'block';
+    submitBtn.disabled = true;
+    
+    // Check if question has already been answered
+    if (question.already_answered) {
+        displayAnsweredQuestion(question);
+        return;
+    }
     
     if (question.question_type === 'multiple_choice') {
         multipleChoiceDiv.style.display = 'block';
@@ -68,12 +120,52 @@ function displayQuestion(question) {
         
         const blankAnswer = document.getElementById('blank-answer');
         blankAnswer.value = '';
+        blankAnswer.disabled = false;
+        blankAnswer.style.opacity = '1';
         blankAnswer.focus();
         
         submitBtn.disabled = true;
     }
     
     selectedAnswer = null;
+}
+
+function displayAnsweredQuestion(question) {
+    const multipleChoiceDiv = document.getElementById('multiple-choice-options');
+    const fillInBlankDiv = document.getElementById('fill-in-blank');
+    const submitBtn = document.getElementById('submit-answer');
+    
+    // Hide submit button for answered questions
+    submitBtn.style.display = 'none';
+    
+    if (question.question_type === 'multiple_choice') {
+        multipleChoiceDiv.style.display = 'block';
+        fillInBlankDiv.style.display = 'none';
+        
+        const optionsDiv = multipleChoiceDiv.querySelector('.options');
+        optionsDiv.innerHTML = question.options.map((option, index) => {
+            const isSelected = option === question.submitted_answer;
+            return `
+                <div class="option answered ${isSelected ? 'selected' : ''}" style="cursor: default; opacity: 0.7;">
+                    ${String.fromCharCode(65 + index)}. ${option}
+                    ${isSelected ? ' ← Your Answer' : ''}
+                </div>
+            `;
+        }).join('');
+    } else {
+        multipleChoiceDiv.style.display = 'none';
+        fillInBlankDiv.style.display = 'block';
+        
+        const blankAnswer = document.getElementById('blank-answer');
+        blankAnswer.value = question.submitted_answer || '';
+        blankAnswer.disabled = true;
+        blankAnswer.style.opacity = '0.7';
+    }
+    
+    // Add a message indicating the question was already answered
+    const questionText = document.getElementById('question-text');
+    questionText.innerHTML = question.question_text + 
+        '<br><small style="color: #666; font-style: italic;">This question has already been answered.</small>';
 }
 
 function selectOption(index, optionText) {
@@ -90,6 +182,12 @@ function selectOption(index, optionText) {
 }
 
 async function submitAnswer() {
+    // Check if game is active
+    if (!currentQuestion || !currentQuestion.game_started || currentQuestion.game_paused) {
+        alert('Game is not currently active');
+        return;
+    }
+    
     let answer;
     
     if (currentQuestion.question_type === 'multiple_choice') {
@@ -186,4 +284,83 @@ function updateScoreboard(scoreboard) {
             <div class="team-score">${team.score} points</div>
         </div>
     `).join('');
+}
+
+function updateGameStatus(data) {
+    if (data && data.hasOwnProperty('game_started') && data.hasOwnProperty('game_paused')) {
+        handleGameStatusChange(data.game_started, data.game_paused);
+    }
+}
+
+function handleGameStatusChange(started, paused) {
+    const questionSection = document.getElementById('question-section');
+    const answerResult = document.getElementById('answer-result');
+    
+    if (!started || paused) {
+        // Game is stopped or paused - disable interactions
+        questionSection.style.display = 'none';
+        answerResult.style.display = 'none';
+        
+        if (!started) {
+            showGameStopped();
+        } else if (paused) {
+            showGamePaused();
+        }
+    } else {
+        // Game is active - show current question
+        hideGameStatus();
+        if (currentQuestion) {
+            displayQuestion(currentQuestion);
+        }
+    }
+}
+
+function showGameStopped(scoreboard = null) {
+    const questionSection = document.getElementById('question-section');
+    const answerResult = document.getElementById('answer-result');
+    
+    questionSection.style.display = 'none';
+    answerResult.style.display = 'block';
+    
+    document.getElementById('result-status').innerHTML = `
+        <h2 style="color: #dc3545;">Game Stopped</h2>
+        <p>The trivia game has been stopped by the administrator.</p>
+    `;
+    document.getElementById('correct-answer-display').style.display = 'none';
+    document.getElementById('team-score').style.display = 'none';
+    document.getElementById('next-question').style.display = 'none';
+    
+    if (scoreboard) {
+        loadScoreboard();
+    }
+}
+
+function showGamePaused(customMessage = null) {
+    const questionSection = document.getElementById('question-section');
+    const answerResult = document.getElementById('answer-result');
+    
+    questionSection.style.display = 'none';
+    answerResult.style.display = 'block';
+    
+    const message = customMessage || 'The trivia game has been paused. Please wait for the administrator to resume.';
+    
+    document.getElementById('result-status').innerHTML = `
+        <h2 style="color: #ffc107;">Game Paused</h2>
+        <p>${message}</p>
+    `;
+    document.getElementById('correct-answer-display').style.display = 'none';
+    document.getElementById('team-score').style.display = 'none';
+    document.getElementById('next-question').style.display = 'none';
+}
+
+function hideGameStatus() {
+    const resultStatus = document.getElementById('result-status');
+    const correctAnswer = document.getElementById('correct-answer-display');
+    const teamScore = document.getElementById('team-score');
+    const nextButton = document.getElementById('next-question');
+    
+    resultStatus.innerHTML = '';
+    correctAnswer.style.display = 'block';
+    teamScore.style.display = 'block';
+    nextButton.style.display = 'block';
 }
