@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, maximum-scale=3.0">
+    <meta name="description" content="Responsive design test page for trivia application">
+    <meta name="theme-color" content="#667eea">
+    <title>Responsive Design Test</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .test-info {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+            z-index: 1000;
+        }
+        .test-section {
+            margin-bottom: 30px;
+        }
+        .breakpoint-indicator {
+            padding: 10px;
+            text-align: center;
+            font-weight: bold;
+            margin-bottom: 20px;
+            border-radius: 5px;
+        }
+        .xs-only { display: block; background: #ffebee; color: #c62828; }
+        .sm-only { display: none; background: #f3e5f5; color: #7b1fa2; }
+        .md-only { display: none; background: #e8f5e8; color: #2e7d32; }
+        .lg-only { display: none; background: #e3f2fd; color: #1565c0; }
+        
+        /* Show appropriate indicators at different breakpoints */
+        @media (min-width: 576px) and (max-width: 767.98px) {
+            .xs-only { display: none; }
+            .sm-only { display: block; }
+        }
+        
+        @media (min-width: 768px) and (max-width: 991.98px) {
+            .xs-only { display: none; }
+            .md-only { display: block; }
+        }
+        
+        @media (min-width: 992px) {
+            .xs-only { display: none; }
+            .lg-only { display: block; }
+        }
+    </style>
+</head>
+<body>
+    <div class="test-info" id="screen-info">
+        Screen: <span id="screen-size"></span><br>
+        Viewport: <span id="viewport-size"></span><br>
+        Device: <span id="device-type"></span>
+    </div>
+
+    <div class="container">
+        <h1>Responsive Design Test</h1>
+        
+        <div class="breakpoint-indicator xs-only">📱 Extra Small (< 576px) - Phone Portrait</div>
+        <div class="breakpoint-indicator sm-only">📱 Small (576px - 768px) - Phone Landscape / Small Tablet</div>
+        <div class="breakpoint-indicator md-only">📱 Medium (768px - 992px) - Tablet</div>
+        <div class="breakpoint-indicator lg-only">💻 Large (992px+) - Desktop</div>
+        
+        <div class="test-section">
+            <div class="section">
+                <h2>Team Selection Test</h2>
+                <div class="team-item">
+                    <div class="team-name">Sample Team</div>
+                    <div class="team-info">Players: Alice, Bob, Charlie (3/4)</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <div class="section">
+                <h2>Form Test</h2>
+                <form>
+                    <input type="text" placeholder="Team Name" required>
+                    <input type="text" placeholder="Your Name" required>
+                    <div class="team-actions">
+                        <button type="submit">Create Team</button>
+                        <button type="button" class="danger-btn">Cancel</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <div class="question-card">
+                <h2>Sample Question</h2>
+                <p>What is the capital of France?</p>
+                
+                <div class="options">
+                    <div class="option">London</div>
+                    <div class="option selected">Paris</div>
+                    <div class="option">Berlin</div>
+                    <div class="option">Madrid</div>
+                </div>
+                
+                <button id="submit-answer">Submit Answer</button>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <div class="section">
+                <h2>Admin Controls Test</h2>
+                <div class="button-row">
+                    <button class="btn btn-success">Start Game</button>
+                    <button class="btn btn-warning">Pause Game</button>
+                    <button class="btn btn-danger">Stop Game</button>
+                </div>
+                
+                <div class="question-controls">
+                    <input type="number" placeholder="Question #" min="1">
+                    <button class="btn btn-primary">Go to Question</button>
+                    <button class="btn btn-primary">Next Question</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="scoreboard">
+            <h3>Scoreboard Test</h3>
+            <div class="score-item">
+                <div class="team-details">
+                    <div class="team-name">Leading Team</div>
+                    <div class="players-list">Alice, Bob, Charlie</div>
+                </div>
+                <div class="team-score">85</div>
+            </div>
+            <div class="score-item">
+                <div class="team-details">
+                    <div class="team-name">Second Place Team</div>
+                    <div class="players-list">David, Emma</div>
+                </div>
+                <div class="team-score">72</div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        function updateScreenInfo() {
+            const screenSize = `${screen.width}x${screen.height}`;
+            const viewportSize = `${window.innerWidth}x${window.innerHeight}`;
+            
+            let deviceType = 'Desktop';
+            if (window.innerWidth < 576) deviceType = 'Phone (XS)';
+            else if (window.innerWidth < 768) deviceType = 'Phone/Tablet (SM)';
+            else if (window.innerWidth < 992) deviceType = 'Tablet (MD)';
+            else deviceType = 'Desktop (LG)';
+            
+            document.getElementById('screen-size').textContent = screenSize;
+            document.getElementById('viewport-size').textContent = viewportSize;
+            document.getElementById('device-type').textContent = deviceType;
+        }
+        
+        // Update on load and resize
+        updateScreenInfo();
+        window.addEventListener('resize', updateScreenInfo);
+        
+        // Test touch vs mouse
+        if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
+            document.getElementById('device-type').textContent += ' (Touch)';
+        }
+    </script>
+</body>
+</html>
