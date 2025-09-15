@@ -1,0 +1,290 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    line-height: 1.6;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    color: #333;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+h1 {
+    text-align: center;
+    color: white;
+    margin-bottom: 30px;
+    font-size: 2.5rem;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+}
+
+h2 {
+    color: #333;
+    margin-bottom: 15px;
+    font-size: 1.5rem;
+}
+
+h3 {
+    color: #555;
+    margin-bottom: 10px;
+}
+
+.section {
+    background: white;
+    padding: 25px;
+    margin-bottom: 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.team-item {
+    background: #f8f9fa;
+    padding: 15px;
+    margin-bottom: 10px;
+    border-radius: 8px;
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.team-item:hover {
+    border-color: #667eea;
+    transform: translateY(-2px);
+}
+
+.team-item.selected {
+    border-color: #667eea;
+    background: #e3f2fd;
+}
+
+.team-name {
+    font-weight: bold;
+    font-size: 1.1rem;
+    color: #333;
+}
+
+.team-info {
+    color: #666;
+    font-size: 0.9rem;
+    margin-top: 5px;
+}
+
+form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+input[type="text"] {
+    padding: 12px;
+    border: 2px solid #ddd;
+    border-radius: 6px;
+    font-size: 1rem;
+    transition: border-color 0.3s ease;
+}
+
+input[type="text"]:focus {
+    outline: none;
+    border-color: #667eea;
+}
+
+button {
+    padding: 12px 24px;
+    background: #667eea;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background 0.3s ease;
+}
+
+button:hover {
+    background: #5a67d8;
+}
+
+button:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+}
+
+.danger-btn {
+    background: #dc3545 !important;
+}
+
+.danger-btn:hover {
+    background: #c82333 !important;
+}
+
+.team-actions {
+    display: flex;
+    gap: 15px;
+    margin-top: 20px;
+}
+
+#current-team-info p {
+    margin: 8px 0;
+    font-size: 1.1rem;
+}
+
+#current-team-info strong {
+    color: #333;
+}
+
+.game-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+}
+
+.game-info {
+    color: white;
+    font-size: 1.2rem;
+    font-weight: bold;
+}
+
+.question-card {
+    background: white;
+    padding: 30px;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
+}
+
+#question-text {
+    font-size: 1.3rem;
+    margin-bottom: 25px;
+    line-height: 1.5;
+}
+
+.options {
+    display: grid;
+    gap: 15px;
+    margin-bottom: 25px;
+}
+
+.option {
+    padding: 15px;
+    background: #f8f9fa;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.option:hover {
+    border-color: #667eea;
+    background: #e3f2fd;
+}
+
+.option.selected {
+    border-color: #667eea;
+    background: #e3f2fd;
+}
+
+#blank-answer {
+    width: 100%;
+    padding: 15px;
+    font-size: 1.1rem;
+    margin-bottom: 25px;
+}
+
+#submit-answer {
+    align-self: flex-start;
+    font-size: 1.1rem;
+    padding: 15px 30px;
+}
+
+.result-card {
+    background: white;
+    padding: 25px;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    text-align: center;
+}
+
+#result-status {
+    font-size: 1.5rem;
+    margin-bottom: 15px;
+}
+
+.correct {
+    color: #28a745;
+}
+
+.incorrect {
+    color: #dc3545;
+}
+
+.scoreboard {
+    background: white;
+    padding: 25px;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    margin-top: 30px;
+}
+
+.scoreboard h3 {
+    text-align: center;
+    margin-bottom: 20px;
+    color: #333;
+}
+
+.score-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 15px;
+    background: #f8f9fa;
+    margin-bottom: 8px;
+    border-radius: 6px;
+    border-left: 4px solid #667eea;
+}
+
+.score-item:first-child {
+    background: #fff3cd;
+    border-left-color: #ffc107;
+}
+
+.team-details {
+    flex: 1;
+}
+
+.team-score {
+    font-weight: bold;
+    font-size: 1.1rem;
+    color: #667eea;
+}
+
+.players-list {
+    font-size: 0.9rem;
+    color: #666;
+    margin-top: 2px;
+}
+
+@media (max-width: 768px) {
+    .container {
+        padding: 10px;
+    }
+    
+    h1 {
+        font-size: 2rem;
+    }
+    
+    .section {
+        padding: 20px;
+    }
+    
+    .question-card {
+        padding: 20px;
+    }
+}

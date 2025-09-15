@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trivia App</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Welcome to Trivia Night!</h1>
+        
+        <div id="current-team-status" class="section" style="display: none;">
+            <h2>Your Current Team</h2>
+            <div id="current-team-info">
+                <p><strong>Team:</strong> <span id="current-team-name"></span></p>
+                <p><strong>Player:</strong> <span id="current-player-name"></span></p>
+                <p><strong>Teammates:</strong> <span id="current-teammates"></span></p>
+            </div>
+            <div class="team-actions">
+                <button id="continue-to-game" onclick="location.href='/game'">Continue to Game</button>
+                <button id="leave-team" class="danger-btn">Leave Team</button>
+            </div>
+        </div>
+
+        <div id="team-selection">
+            <div class="section">
+                <h2>Existing Teams</h2>
+                <div id="teams-list"></div>
+            </div>
+            
+            <div class="section">
+                <h2>Create New Team</h2>
+                <form id="create-team-form">
+                    <input type="text" id="new-team-name" placeholder="Team Name" required>
+                    <input type="text" id="new-player-name" placeholder="Your Name" required>
+                    <button type="submit">Create Team</button>
+                </form>
+            </div>
+            
+            <div class="section" id="join-team-section" style="display: none;">
+                <h2>Join Team</h2>
+                <form id="join-team-form">
+                    <input type="hidden" id="selected-team-id">
+                    <p id="selected-team-name"></p>
+                    <input type="text" id="join-player-name" placeholder="Your Name" required>
+                    <button type="submit">Join Team</button>
+                    <button type="button" id="cancel-join">Cancel</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/index.js') }}"></script>
+</body>
+</html>

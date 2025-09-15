@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trivia Game</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="game-header">
+            <h1>Trivia Game</h1>
+            <div class="game-info">
+                <span id="question-counter">Question 1 of 10</span>
+            </div>
+        </div>
+
+        <div id="question-section">
+            <div class="question-card">
+                <h2 id="question-text">Loading question...</h2>
+                
+                <div id="multiple-choice-options" style="display: none;">
+                    <div class="options"></div>
+                </div>
+                
+                <div id="fill-in-blank" style="display: none;">
+                    <input type="text" id="blank-answer" placeholder="Your answer">
+                </div>
+                
+                <button id="submit-answer" disabled>Submit Answer</button>
+            </div>
+            
+            <div id="answer-result" style="display: none;">
+                <div class="result-card">
+                    <h3 id="result-status"></h3>
+                    <p id="correct-answer-display"></p>
+                    <p id="team-score"></p>
+                    <button id="next-question" onclick="nextQuestion()">Next Question</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="scoreboard">
+            <h3>Scoreboard</h3>
+            <div id="scoreboard-list"></div>
+        </div>
+    </div>
+
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+    <script src="{{ url_for('static', filename='js/game.js') }}"></script>
+</body>
+</html>
