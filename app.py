@@ -87,6 +87,10 @@ def admin_required(f):
 def index():
     return render_template('index.html')
 
+@app.route('/responsive-test')
+def responsive_test():
+    return render_template('responsive_test.html')
+
 @app.route('/api/teams')
 def get_teams():
     return jsonify(game.get_teams())

@@ -198,13 +198,58 @@ class TriviaGame:
         return {'success': False, 'message': 'Invalid question index'}
     
     def get_game_status(self):
-        return {
+        status = {
             'started': self.game_started,
             'paused': self.game_paused,
             'current_question': self.current_question_index + 1,
             'total_questions': len(self.questions),
             'teams_count': len(self.teams)
         }
+        
+        # Add current question details if game is started
+        if self.game_started and self.current_question_index < len(self.questions):
+            current_question = self.questions[self.current_question_index]
+            status['question_details'] = {
+                'question_text': current_question.question_text,
+                'question_type': current_question.question_type,
+                'correct_answer': current_question.correct_answer,
+                'options': current_question.options if hasattr(current_question, 'options') else None
+            }
+            
+            # Add team answer status
+            team_answers = []
+            for team_id, team in self.teams.items():
+                has_answered = self.has_team_answered_question(team_id, self.current_question_index)
+                answer_data = {
+                    'team_id': team_id,
+                    'team_name': team.name,
+                    'has_answered': has_answered,
+                    'submitted_answer': None,
+                    'is_correct': None
+                }
+                
+                if has_answered:
+                    submitted_answer = self.get_team_answer(team_id, self.current_question_index)
+                    answer_data['submitted_answer'] = submitted_answer
+                    answer_data['is_correct'] = (submitted_answer.lower().strip() == 
+                                               current_question.correct_answer.lower().strip())
+                
+                team_answers.append(answer_data)
+            
+            status['team_answers'] = team_answers
+            
+            # Add summary stats
+            answered_count = sum(1 for t in team_answers if t['has_answered'])
+            correct_count = sum(1 for t in team_answers if t['is_correct'])
+            
+            status['answer_summary'] = {
+                'teams_answered': answered_count,
+                'teams_total': len(self.teams),
+                'correct_answers': correct_count,
+                'completion_percentage': round((answered_count / len(self.teams)) * 100) if self.teams else 0
+            }
+        
+        return status
     
     def update_team_name(self, team_id, new_name):
         """Update a team's name"""

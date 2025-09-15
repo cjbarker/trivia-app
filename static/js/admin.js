@@ -29,7 +29,10 @@ function setupEventListeners() {
     
     // Socket listeners
     socket.on('game_status_update', updateGameStatus);
-    socket.on('score_update', updateScoreboard);
+    socket.on('score_update', function(scoreboard) {
+        updateScoreboard(scoreboard);
+        loadGameStatus(); // Refresh status when scores update (answers submitted)
+    });
     socket.on('teams_update', updateTeams);
     socket.on('new_question', function(question) {
         loadGameStatus(); // Refresh status when question changes
@@ -70,6 +73,107 @@ function updateGameStatus(status) {
     
     // Update question input max
     document.getElementById('question-number').max = status.total_questions;
+    
+    // Update question display section
+    updateQuestionDisplay(status);
+}
+
+function updateQuestionDisplay(status) {
+    const questionSection = document.getElementById('current-question-section');
+    
+    if (status.started && status.question_details) {
+        questionSection.style.display = 'block';
+        
+        // Update question text
+        const questionTextDiv = document.getElementById('question-text-display');
+        questionTextDiv.innerHTML = `<strong>Q${status.current_question}:</strong> ${status.question_details.question_text}`;
+        
+        // Update question options or answer type
+        const optionsDiv = document.getElementById('question-options-display');
+        if (status.question_details.question_type === 'multiple_choice' && status.question_details.options) {
+            optionsDiv.innerHTML = '<h5>Options:</h5>' + 
+                status.question_details.options.map((option, index) => {
+                    const isCorrect = option === status.question_details.correct_answer;
+                    return `<div class="question-option ${isCorrect ? 'correct' : ''}">${String.fromCharCode(65 + index)}) ${option}</div>`;
+                }).join('');
+        } else {
+            optionsDiv.innerHTML = '<p><em>Fill-in-the-blank question</em></p>';
+        }
+        
+        // Update correct answer display
+        const correctAnswerDiv = document.getElementById('correct-answer-display');
+        correctAnswerDiv.innerHTML = `<strong>Correct Answer:</strong> ${status.question_details.correct_answer}`;
+        
+        // Update answer progress
+        updateAnswerProgress(status.answer_summary);
+        
+        // Update team answers
+        updateTeamAnswers(status.team_answers);
+        
+    } else {
+        questionSection.style.display = 'none';
+    }
+}
+
+function updateAnswerProgress(summary) {
+    if (!summary) return;
+    
+    const progressSummary = document.getElementById('progress-summary');
+    const progressBar = document.getElementById('progress-bar');
+    
+    progressSummary.innerHTML = `
+        <span>Teams Answered: ${summary.teams_answered}/${summary.teams_total}</span>
+        <span>Correct: ${summary.correct_answers}</span>
+        <span>${summary.completion_percentage}% Complete</span>
+    `;
+    
+    progressBar.style.width = `${summary.completion_percentage}%`;
+}
+
+function updateTeamAnswers(teamAnswers) {
+    if (!teamAnswers) return;
+    
+    const teamAnswersList = document.getElementById('team-answers-list');
+    
+    if (teamAnswers.length === 0) {
+        teamAnswersList.innerHTML = '<p>No teams in game</p>';
+        return;
+    }
+    
+    teamAnswersList.innerHTML = teamAnswers.map(team => {
+        let statusClass = '';
+        let statusIcon = '⏳';
+        let statusText = 'Waiting';
+        let answerText = '';
+        
+        if (team.has_answered) {
+            answerText = `Answer: "${team.submitted_answer}"`;
+            if (team.is_correct) {
+                statusClass = 'correct';
+                statusIcon = '✓';
+                statusText = 'Correct';
+            } else {
+                statusClass = 'incorrect';
+                statusIcon = '✗';
+                statusText = 'Incorrect';
+            }
+        }
+        
+        return `
+            <div class="team-answer-item ${statusClass}">
+                <div class="team-answer-info">
+                    <div class="team-answer-name">${team.team_name}</div>
+                    ${answerText ? `<div class="team-answer-response">${answerText}</div>` : ''}
+                </div>
+                <div class="team-answer-status">
+                    <div class="answer-status-icon status-${team.has_answered ? (team.is_correct ? 'correct' : 'incorrect') : 'waiting'}">
+                        ${statusIcon}
+                    </div>
+                    <span>${statusText}</span>
+                </div>
+            </div>
+        `;
+    }).join('');
 }
 
 async function controlGame(action) {
