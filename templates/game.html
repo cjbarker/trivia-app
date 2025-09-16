@@ -20,6 +20,26 @@
                 <span id="team-info" style="margin-left: 20px; font-size: 0.9em; color: #666;"></span>
             </div>
         </div>
+        
+        <!-- Timer Section -->
+        <div id="timer-section" class="timer-container" style="display: none;">
+            <div class="timer-display">
+                <div class="timer-circle">
+                    <div class="timer-text">
+                        <span id="timer-seconds">60</span>
+                        <span class="timer-label">seconds</span>
+                    </div>
+                    <svg class="timer-progress" viewBox="0 0 100 100">
+                        <circle cx="50" cy="50" r="45" class="timer-background"></circle>
+                        <circle cx="50" cy="50" r="45" class="timer-progress-bar" id="timer-progress-circle"></circle>
+                    </svg>
+                </div>
+                <div class="bonus-info">
+                    <span class="bonus-label">Bonus Points:</span>
+                    <span id="bonus-points" class="bonus-value">+6</span>
+                </div>
+            </div>
+        </div>
 
         <div id="question-section">
             <div class="question-card">

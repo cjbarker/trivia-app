@@ -70,8 +70,37 @@ def emit_question_to_all_teams():
         if team_question['already_answered']:
             team_question['submitted_answer'] = game.get_team_answer(team_id, current_index)
         
+        # Add timer information if game is active
+        if game.game_started and not game.game_paused:
+            time_remaining = game.get_time_remaining()
+            if time_remaining is not None and time_remaining > 0:
+                team_question['timer'] = {
+                    'time_remaining': time_remaining,
+                    'bonus_points': game.get_bonus_points(60 - time_remaining),
+                    'total_time': game.question_timer_duration
+                }
+        
         # Emit to specific team
         socketio.emit('new_question', team_question, room=team_id)
+
+# Timer callback functions for WebSocket synchronization
+def timer_update_callback(time_remaining, bonus_points):
+    """Called every second during question timer countdown"""
+    socketio.emit('timer_update', {
+        'time_remaining': time_remaining,
+        'bonus_points': bonus_points,
+        'expired': False
+    })
+
+def timer_expired_callback():
+    """Called when question timer expires"""
+    socketio.emit('timer_expired')
+
+# Register timer callbacks for WebSocket synchronization
+def setup_timer_callbacks():
+    """Setup timer callbacks for WebSocket synchronization"""
+    game.timer_callbacks = [timer_update_callback]
+    game.timer_expired_callbacks = [timer_expired_callback]
 
 # Admin authentication decorator
 def admin_required(f):
@@ -184,6 +213,16 @@ def get_current_question():
         if question_data['already_answered']:
             # Include the team's submitted answer
             question_data['submitted_answer'] = game.get_team_answer(team_id, current_index)
+        
+        # Add timer information
+        if game.game_started and not game.game_paused:
+            time_remaining = game.get_time_remaining()
+            if time_remaining is not None and time_remaining > 0:
+                question_data['timer'] = {
+                    'time_remaining': time_remaining,
+                    'bonus_points': game.get_bonus_points(60 - time_remaining),
+                    'total_time': game.question_timer_duration
+                }
     
     return jsonify(question_data)
 
@@ -246,6 +285,8 @@ def admin_get_status():
 def admin_start_game():
     result = game.start_game()
     if result['success']:
+        # Start timer for first question
+        game.start_question_timer()
         socketio.emit('game_status_update', game.get_game_status())
         emit_question_to_all_teams()
     return jsonify(result)
@@ -283,6 +324,8 @@ def admin_resume_game():
 def admin_next_question():
     if game.current_question_index < len(game.questions) - 1:
         game.next_question()
+        # Start timer for new question
+        game.start_question_timer()
         emit_question_to_all_teams()
         socketio.emit('game_status_update', game.get_game_status())
         return jsonify({'success': True})
@@ -296,6 +339,8 @@ def admin_set_question():
     question_number = data.get('question_number', 1)
     result = game.set_question(question_number - 1)  # Convert to 0-based index
     if result['success']:
+        # Start timer for new question
+        game.start_question_timer()
         emit_question_to_all_teams()
         socketio.emit('game_status_update', game.get_game_status())
     return jsonify(result)
@@ -361,6 +406,9 @@ def on_disconnect():
         leave_room(session['team_id'])
 
 if __name__ == '__main__':
+    # Setup timer callbacks for WebSocket synchronization
+    setup_timer_callbacks()
+    
     # Load questions from markdown file
     if os.path.exists('questions.md'):
         parser = TriviaParser('questions.md')

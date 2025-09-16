@@ -110,8 +110,13 @@ function updateQuestionDisplay(status) {
         // Update team answers
         updateTeamAnswers(status.team_answers);
         
+        // Update timer display
+        updateAdminTimer(status.timer);
+        
     } else {
         questionSection.style.display = 'none';
+        // Hide timer section when game is not active
+        document.getElementById('admin-timer-status').style.display = 'none';
     }
 }
 
@@ -174,6 +179,37 @@ function updateTeamAnswers(teamAnswers) {
             </div>
         `;
     }).join('');
+}
+
+function updateAdminTimer(timerData) {
+    if (!timerData) {
+        document.getElementById('admin-timer-status').style.display = 'none';
+        return;
+    }
+    
+    document.getElementById('admin-timer-status').style.display = 'block';
+    
+    const timeRemaining = timerData.time_remaining;
+    const bonusPoints = timerData.bonus_points;
+    const totalTime = timerData.total_time || 60;
+    
+    // Update display text
+    document.getElementById('admin-time-remaining').textContent = `${timeRemaining}s`;
+    document.getElementById('admin-bonus-points').textContent = `+${bonusPoints}`;
+    
+    // Update progress bar
+    const timerBar = document.getElementById('admin-timer-bar');
+    const percentage = (timeRemaining / totalTime) * 100;
+    timerBar.style.width = `${percentage}%`;
+    
+    // Update colors based on time remaining
+    timerBar.classList.remove('warning', 'danger');
+    
+    if (percentage <= 20) {
+        timerBar.classList.add('danger');
+    } else if (percentage <= 50) {
+        timerBar.classList.add('warning');
+    }
 }
 
 async function controlGame(action) {

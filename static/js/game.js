@@ -1,6 +1,8 @@
 const socket = io();
 let currentQuestion = null;
 let selectedAnswer = null;
+let timerInterval = null;
+let currentTimer = null;
 
 document.addEventListener('DOMContentLoaded', function() {
     checkTeamStatus();
@@ -24,13 +26,19 @@ function setupEventListeners() {
         document.getElementById('answer-result').style.display = 'none';
         document.getElementById('question-section').style.display = 'block';
         updateGameStatus(question);
+        // Start timer for new question
+        if (question.timer) {
+            startTimer(question.timer);
+        }
     });
     socket.on('game_status_update', updateGameStatus);
     socket.on('game_stopped', function(data) {
         showGameStopped(data.scoreboard);
+        stopTimer();
     });
     socket.on('game_paused', function(data) {
         showGamePaused(data.message);
+        pauseTimer();
     });
     socket.on('game_resumed', function(data) {
         hideGameStatus();
@@ -39,6 +47,16 @@ function setupEventListeners() {
             document.getElementById('question-section').style.display = 'block';
             document.getElementById('answer-result').style.display = 'none';
         }
+        resumeTimer();
+    });
+    
+    // Timer-specific socket events
+    socket.on('timer_update', function(data) {
+        updateTimer(data.time_remaining, data.bonus_points, data.expired);
+    });
+    
+    socket.on('timer_expired', function() {
+        onTimerExpired();
     });
 }
 
@@ -75,6 +93,10 @@ async function loadCurrentQuestion() {
             currentQuestion = question;
             displayQuestion(question);
             updateGameStatus(question);
+            // Initialize timer if game is started
+            if (question.game_started && !question.game_paused && question.timer) {
+                startTimer(question.timer);
+            }
         } else {
             document.getElementById('question-text').textContent = 'No more questions available.';
         }
@@ -213,6 +235,8 @@ async function submitAnswer() {
         const result = await response.json();
         
         if (result.success) {
+            // Stop timer when answer is submitted
+            stopTimer();
             displayResult(result);
         } else {
             alert('Error submitting answer: ' + (result.error || 'Unknown error'));
@@ -232,7 +256,10 @@ function displayResult(result) {
     const teamScoreElement = document.getElementById('team-score');
     
     if (result.correct) {
-        statusElement.textContent = 'Correct!';
+        statusElement.innerHTML = `
+            <span class="correct">Correct!</span>
+            ${result.bonus_points > 0 ? `<span style="color: #28a745; font-size: 0.9em; display: block;">Bonus: +${result.bonus_points} points (${result.answer_time}s)</span>` : ''}
+        `;
         statusElement.className = 'correct';
     } else {
         statusElement.textContent = 'Incorrect';
@@ -240,7 +267,14 @@ function displayResult(result) {
         correctAnswerElement.textContent = `Correct answer: ${result.correct_answer}`;
     }
     
-    teamScoreElement.textContent = `Your team score: ${result.team_score}`;
+    const pointsText = result.correct && result.points_earned > 1 ? 
+        `+${result.points_earned} points (1 + ${result.bonus_points} bonus)` :
+        result.correct ? '+1 point' : '0 points';
+    
+    teamScoreElement.innerHTML = `
+        <strong>Points earned:</strong> ${pointsText}<br>
+        <strong>Team score:</strong> ${result.team_score}
+    `;
 }
 
 async function nextQuestion() {
@@ -363,4 +397,129 @@ function hideGameStatus() {
     correctAnswer.style.display = 'block';
     teamScore.style.display = 'block';
     nextButton.style.display = 'block';
+}
+
+// Timer Functions
+function startTimer(timerData) {
+    currentTimer = {
+        timeRemaining: timerData.time_remaining || 60,
+        bonusPoints: timerData.bonus_points || 6,
+        totalTime: timerData.total_time || 60
+    };
+    
+    // Show timer section
+    document.getElementById('timer-section').style.display = 'block';
+    
+    // Clear any existing timer
+    if (timerInterval) {
+        clearInterval(timerInterval);
+    }
+    
+    // Start countdown
+    updateTimerDisplay();
+    timerInterval = setInterval(function() {
+        if (currentTimer.timeRemaining > 0) {
+            currentTimer.timeRemaining--;
+            // Update bonus points based on remaining time
+            const elapsed = currentTimer.totalTime - currentTimer.timeRemaining;
+            currentTimer.bonusPoints = getBonusPointsForTime(elapsed);
+            updateTimerDisplay();
+        } else {
+            onTimerExpired();
+        }
+    }, 1000);
+}
+
+function updateTimer(timeRemaining, bonusPoints, expired) {
+    if (expired) {
+        onTimerExpired();
+        return;
+    }
+    
+    currentTimer = {
+        timeRemaining: timeRemaining,
+        bonusPoints: bonusPoints,
+        totalTime: currentTimer ? currentTimer.totalTime : 60
+    };
+    
+    updateTimerDisplay();
+}
+
+function updateTimerDisplay() {
+    if (!currentTimer) return;
+    
+    const timerSeconds = document.getElementById('timer-seconds');
+    const bonusPoints = document.getElementById('bonus-points');
+    const progressCircle = document.getElementById('timer-progress-circle');
+    const bonusValue = document.querySelector('.bonus-value');
+    
+    // Update timer text
+    timerSeconds.textContent = currentTimer.timeRemaining;
+    bonusPoints.textContent = currentTimer.bonusPoints > 0 ? `+${currentTimer.bonusPoints}` : '0';
+    
+    // Update progress circle
+    const totalTime = currentTimer.totalTime;
+    const remaining = currentTimer.timeRemaining;
+    const progress = (remaining / totalTime) * 283; // 283 is circumference
+    progressCircle.style.strokeDashoffset = 283 - progress;
+    
+    // Update colors based on time remaining
+    const progressBar = document.querySelector('.timer-progress-bar');
+    const percentage = (remaining / totalTime) * 100;
+    
+    progressBar.classList.remove('warning', 'danger');
+    bonusValue.classList.remove('warning', 'zero');
+    
+    if (percentage <= 20) {
+        progressBar.classList.add('danger');
+        bonusValue.classList.add('zero');
+    } else if (percentage <= 50) {
+        progressBar.classList.add('warning');
+        bonusValue.classList.add('warning');
+    }
+}
+
+function getBonusPointsForTime(elapsedSeconds) {
+    // Start with 6 points, deduct 1 point every 10 seconds
+    // 0-10s: 6 points, 10-20s: 5 points, 20-30s: 4 points, 30-40s: 3 points, 40-50s: 2 points, 50-60s: 1 point, 60s+: 0 points
+    const points = 6 - Math.floor(elapsedSeconds / 10);
+    return Math.max(0, points); // Ensure points never go below 0
+}
+
+function pauseTimer() {
+    if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+    }
+}
+
+function resumeTimer() {
+    if (currentTimer && currentTimer.timeRemaining > 0) {
+        startTimer(currentTimer);
+    }
+}
+
+function stopTimer() {
+    if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+    }
+    
+    currentTimer = null;
+    document.getElementById('timer-section').style.display = 'none';
+}
+
+function onTimerExpired() {
+    stopTimer();
+    
+    // Show timer expired message but keep submission enabled
+    const timerSection = document.getElementById('timer-section');
+    if (timerSection) {
+        timerSection.innerHTML = `
+            <div class="timer-display" style="text-align: center; color: #dc3545;">
+                <h3>⏰ Bonus Time Expired!</h3>
+                <p>You can still submit answers, but no bonus points will be awarded.</p>
+            </div>
+        `;
+    }
 }

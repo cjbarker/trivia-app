@@ -1,5 +1,7 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
+import time
+import threading
 
 class Team:
     def __init__(self, name, team_id=None):
@@ -58,6 +60,13 @@ class TriviaGame:
         self.current_question_index = 0
         self.game_started = False
         self.game_paused = False
+        # Timer functionality
+        self.question_timer_duration = 60  # seconds
+        self.question_start_time = None
+        self.timer_thread = None
+        self.timer_callbacks = []  # For WebSocket updates
+        self.timer_expired_callbacks = []  # Called when timer expires
+        self.answer_times = {}  # Store when each team answered: {question_index: {team_id: timestamp}}
     
     def create_team(self, team_name, player_name):
         team = Team(team_name)
@@ -129,6 +138,19 @@ class TriviaGame:
         if self.has_team_answered_question(team_id, self.current_question_index):
             return {'success': False, 'error': 'Question already answered'}
         
+        # Calculate answer time and bonus points
+        answer_time_seconds = 60  # Default if no timer
+        bonus_points = 0
+        
+        if self.question_start_time:
+            answer_time_seconds = time.time() - self.question_start_time
+            bonus_points = self.get_bonus_points(answer_time_seconds)
+            
+            # Store answer time
+            if self.current_question_index not in self.answer_times:
+                self.answer_times[self.current_question_index] = {}
+            self.answer_times[self.current_question_index][team_id] = answer_time_seconds
+        
         question = self.questions[self.current_question_index]
         team = self.teams[team_id]
         
@@ -138,12 +160,18 @@ class TriviaGame:
         # Check if answer is correct
         is_correct = self._check_answer(answer, question.correct_answer)
         
+        # Calculate points (1 for correct + bonus)
+        points_earned = 0
         if is_correct:
-            team.score += 1
+            points_earned = 1 + bonus_points
+            team.score += points_earned
         
         return {
             'success': True,
             'correct': is_correct,
+            'points_earned': points_earned,
+            'bonus_points': bonus_points,
+            'answer_time': round(answer_time_seconds, 1),
             'correct_answer': question.correct_answer,
             'team_score': team.score
         }
@@ -155,6 +183,9 @@ class TriviaGame:
     
     def next_question(self):
         self.current_question_index += 1
+        # Start timer for new question
+        if self.game_started and not self.game_paused:
+            self.start_question_timer()
     
     def get_scoreboard(self):
         scoreboard = []
@@ -172,11 +203,14 @@ class TriviaGame:
     def start_game(self):
         self.game_started = True
         self.game_paused = False
+        # Start timer for first question
+        self.start_question_timer()
         return {'success': True, 'message': 'Game started'}
     
     def stop_game(self):
         self.game_started = False
         self.game_paused = True
+        self.question_start_time = None  # Stop timer
         return {'success': True, 'message': 'Game stopped'}
     
     def pause_game(self):
@@ -203,7 +237,13 @@ class TriviaGame:
             'paused': self.game_paused,
             'current_question': self.current_question_index + 1,
             'total_questions': len(self.questions),
-            'teams_count': len(self.teams)
+            'teams_count': len(self.teams),
+            # Timer information
+            'timer': {
+                'time_remaining': self.get_time_remaining(),
+                'total_time': self.question_timer_duration,
+                'bonus_points': self.get_bonus_points(self.question_timer_duration - self.get_time_remaining())
+            }
         }
         
         # Add current question details if game is started
@@ -250,6 +290,81 @@ class TriviaGame:
             }
         
         return status
+    
+    def add_timer_callback(self, callback):
+        """Add callback function for timer updates (WebSocket events)"""
+        self.timer_callbacks.append(callback)
+    
+    def get_time_remaining(self):
+        """Get remaining time for current question in seconds"""
+        if not self.question_start_time or self.game_paused:
+            return self.question_timer_duration
+        
+        elapsed = time.time() - self.question_start_time
+        remaining = max(0, self.question_timer_duration - elapsed)
+        return int(remaining)
+    
+    def get_bonus_points(self, answer_time_seconds):
+        """Calculate bonus points based on answer time - deduct 1 point every 10 seconds"""
+        # Start with 6 points, deduct 1 point every 10 seconds
+        # 0-10s: 6 points, 10-20s: 5 points, 20-30s: 4 points, 30-40s: 3 points, 40-50s: 2 points, 50-60s: 1 point, 60s+: 0 points
+        points = 6 - int(answer_time_seconds // 10)
+        return max(0, points)  # Ensure points never go below 0
+    
+    def start_question_timer(self):
+        """Start the timer for the current question"""
+        if self.game_paused:
+            return
+            
+        self.question_start_time = time.time()
+        
+        # Initialize answer times for current question if not exists
+        if self.current_question_index not in self.answer_times:
+            self.answer_times[self.current_question_index] = {}
+        
+        # Start timer thread for WebSocket updates
+        if self.timer_thread and self.timer_thread.is_alive():
+            return  # Timer already running
+            
+        self.timer_thread = threading.Thread(target=self._timer_worker, daemon=True)
+        self.timer_thread.start()
+    
+    def _timer_worker(self):
+        """Background worker for timer updates"""
+        while self.question_start_time and not self.game_paused:
+            remaining = self.get_time_remaining()
+            
+            # Notify callbacks (WebSocket updates)
+            for callback in self.timer_callbacks:
+                try:
+                    callback(remaining, self.get_bonus_points(60 - remaining))
+                except Exception as e:
+                    print(f"Timer callback error: {e}")
+            
+            if remaining <= 0:
+                # Timer expired - notify expired callbacks
+                for callback in self.timer_expired_callbacks:
+                    try:
+                        callback()
+                    except Exception as e:
+                        print(f"Timer expired callback error: {e}")
+                break
+                
+            time.sleep(1)  # Update every second
+    
+    def pause_question_timer(self):
+        """Pause the current question timer"""
+        if self.question_start_time:
+            # Store elapsed time
+            elapsed = time.time() - self.question_start_time
+            self.question_start_time = None
+            return elapsed
+        return 0
+    
+    def resume_question_timer(self, elapsed_time=0):
+        """Resume the question timer with previous elapsed time"""
+        self.question_start_time = time.time() - elapsed_time
+        self.start_question_timer()
     
     def update_team_name(self, team_id, new_name):
         """Update a team's name"""
