@@ -37,6 +37,15 @@ function setupEventListeners() {
     socket.on('new_question', function(question) {
         loadGameStatus(); // Refresh status when question changes
     });
+    
+    // Timer-specific socket events for real-time updates
+    socket.on('timer_update', function(data) {
+        updateAdminTimerRealtime(data.time_remaining, data.bonus_points, data.expired);
+    });
+    
+    socket.on('timer_expired', function() {
+        showAdminTimerExpired();
+    });
 }
 
 async function loadGameStatus() {
@@ -209,6 +218,63 @@ function updateAdminTimer(timerData) {
         timerBar.classList.add('danger');
     } else if (percentage <= 50) {
         timerBar.classList.add('warning');
+    }
+}
+
+function updateAdminTimerRealtime(timeRemaining, bonusPoints, expired) {
+    if (expired) {
+        showAdminTimerExpired();
+        return;
+    }
+    
+    // Only update if timer section is visible
+    const timerSection = document.getElementById('admin-timer-status');
+    if (timerSection.style.display === 'none') {
+        timerSection.style.display = 'block';
+    }
+    
+    const totalTime = 60; // Default timer duration
+    
+    // Update display text
+    const timeRemainingElement = document.getElementById('admin-time-remaining');
+    const bonusPointsElement = document.getElementById('admin-bonus-points');
+    
+    if (timeRemainingElement) {
+        timeRemainingElement.textContent = `${timeRemaining}s`;
+    }
+    if (bonusPointsElement) {
+        bonusPointsElement.textContent = `+${bonusPoints}`;
+    }
+    
+    // Update progress bar
+    const timerBar = document.getElementById('admin-timer-bar');
+    if (timerBar) {
+        const percentage = (timeRemaining / totalTime) * 100;
+        timerBar.style.width = `${percentage}%`;
+        
+        // Update colors based on time remaining
+        timerBar.classList.remove('warning', 'danger');
+        
+        if (percentage <= 20) {
+            timerBar.classList.add('danger');
+        } else if (percentage <= 50) {
+            timerBar.classList.add('warning');
+        }
+    }
+}
+
+function showAdminTimerExpired() {
+    const timerSection = document.getElementById('admin-timer-status');
+    if (timerSection) {
+        timerSection.innerHTML = `
+            <div class="timer-status-header">
+                <h5>⏰ Bonus Timer</h5>
+            </div>
+            <div class="timer-display" style="text-align: center; color: #dc3545; padding: 15px;">
+                <h6>Bonus Time Expired!</h6>
+                <p style="margin: 0; font-size: 0.9em;">Teams can still submit answers, but no bonus points will be awarded.</p>
+            </div>
+        `;
     }
 }
 
