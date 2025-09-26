@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, jsonify, session, redirect, u
 from flask_socketio import SocketIO, emit, join_room, leave_room
 import json
 import os
+import base64
 from datetime import datetime
 from trivia_parser import TriviaParser
 from models import TriviaGame
@@ -129,31 +130,42 @@ def create_team():
     data = request.json
     team_name = data.get('team_name')
     player_name = data.get('player_name')
+    team_icon = data.get('team_icon')  # Base64 encoded image data
     
-    team_id = game.create_team(team_name, player_name)
-    session['team_id'] = team_id
-    session['player_name'] = player_name
+    # Validate and process the icon if provided
+    processed_icon = None
+    if team_icon:
+        try:
+            # Validate that it's a proper base64 image
+            if team_icon.startswith('data:image/'):
+                processed_icon = team_icon
+            else:
+                return jsonify({'success': False, 'error': 'Invalid image format'}), 400
+        except Exception as e:
+            return jsonify({'success': False, 'error': 'Invalid image data'}), 400
     
-    return jsonify({'team_id': team_id, 'success': True})
+    result = game.create_team(team_name, player_name, icon=processed_icon)
+    
+    if result['success']:
+        session['team_id'] = result['team_id']
+        session['player_name'] = player_name
+        return jsonify({'team_id': result['team_id'], 'success': True})
+    else:
+        return jsonify({'success': False, 'error': result['error']}), 400
 
 @app.route('/api/teams/<team_id>/join', methods=['POST'])
 def join_team(team_id):
     data = request.json
     player_name = data.get('player_name')
     
-    # Check if player is already on a team
-    current_team_id = game.find_player_team(player_name)
-    if current_team_id and current_team_id != team_id:
-        # Remove from current team first
-        game.leave_team(current_team_id, player_name)
+    result = game.join_team(team_id, player_name)
     
-    success = game.join_team(team_id, player_name)
-    if success:
+    if result['success']:
         session['team_id'] = team_id
         session['player_name'] = player_name
         return jsonify({'success': True})
     else:
-        return jsonify({'success': False, 'error': 'Team not found'})
+        return jsonify({'success': False, 'error': result['error']}), 400
 
 @app.route('/api/teams/leave', methods=['POST'])
 def leave_team():
@@ -190,6 +202,7 @@ def get_player_status():
         'has_team': True,
         'team_id': team_id,
         'team_name': team.name,
+        'team_icon': team.icon,
         'player_name': player_name,
         'teammates': [p for p in team.players if p != player_name]
     })

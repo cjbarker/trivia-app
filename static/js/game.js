@@ -74,7 +74,10 @@ async function checkTeamStatus() {
         // Update team info display if available
         const teamInfo = document.getElementById('team-info');
         if (teamInfo) {
-            teamInfo.textContent = `${status.team_name} - ${status.player_name}`;
+            const iconHtml = status.team_icon ? 
+                `<img class="team-icon-small" src="${status.team_icon}" alt="${status.team_name} icon" style="width: 20px; height: 20px; object-fit: cover; border-radius: 4px; margin-right: 8px; vertical-align: middle;">` : 
+                '<span class="team-icon-placeholder-small" style="display: inline-block; width: 20px; height: 20px; background: #e9ecef; border-radius: 4px; margin-right: 8px; vertical-align: middle; text-align: center; line-height: 20px; font-size: 12px; color: #6c757d;">?</span>';
+            teamInfo.innerHTML = `${iconHtml}${status.team_name} - ${status.player_name}`;
         }
         
     } catch (error) {
@@ -309,15 +312,23 @@ function updateScoreboard(scoreboard) {
         return;
     }
     
-    scoreboardList.innerHTML = scoreboard.map((team, index) => `
-        <div class="score-item">
-            <div class="team-details">
-                <div class="team-name">${team.team_name}</div>
-                <div class="players-list">${team.players.join(', ')}</div>
+    scoreboardList.innerHTML = scoreboard.map((team, index) => {
+        const iconHtml = team.team_icon ? 
+            `<img class="team-icon-small" src="${team.team_icon}" alt="${team.team_name} icon" style="width: 24px; height: 24px; object-fit: cover; border-radius: 4px; margin-right: 10px;">` : 
+            '<span class="team-icon-placeholder-small" style="display: inline-block; width: 24px; height: 24px; background: #e9ecef; border-radius: 4px; margin-right: 10px; text-align: center; line-height: 24px; font-size: 14px; color: #6c757d; flex-shrink: 0;">?</span>';
+        
+        return `
+            <div class="score-item">
+                <div class="team-details">
+                    <div class="team-name" style="display: flex; align-items: center;">
+                        ${iconHtml}${team.team_name}
+                    </div>
+                    <div class="players-list">${team.players.join(', ')}</div>
+                </div>
+                <div class="team-score">${team.score} points</div>
             </div>
-            <div class="team-score">${team.score} points</div>
-        </div>
-    `).join('');
+        `;
+    }).join('');
 }
 
 function updateGameStatus(data) {

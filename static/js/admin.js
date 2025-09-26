@@ -173,10 +173,16 @@ function updateTeamAnswers(teamAnswers) {
             }
         }
         
+        const iconHtml = team.team_icon ? 
+            `<img class="team-icon-small" src="${team.team_icon}" alt="${team.team_name} icon" style="width: 20px; height: 20px; object-fit: cover; border-radius: 4px; margin-right: 8px;">` : 
+            '<span class="team-icon-placeholder-small" style="display: inline-block; width: 20px; height: 20px; background: #e9ecef; border-radius: 4px; margin-right: 8px; text-align: center; line-height: 20px; font-size: 12px; color: #6c757d;">?</span>';
+            
         return `
             <div class="team-answer-item ${statusClass}">
                 <div class="team-answer-info">
-                    <div class="team-answer-name">${team.team_name}</div>
+                    <div class="team-answer-name" style="display: flex; align-items: center;">
+                        ${iconHtml}${team.team_name}
+                    </div>
                     ${answerText ? `<div class="team-answer-response">${answerText}</div>` : ''}
                 </div>
                 <div class="team-answer-status">
@@ -393,15 +399,23 @@ function updateScoreboard(scoreboard) {
         return;
     }
     
-    scoreboardList.innerHTML = scoreboard.map((team, index) => `
-        <div class="score-item">
-            <div class="team-details">
-                <div class="team-name">#${index + 1} ${team.team_name}</div>
-                <div class="players-list">${team.players.join(', ')}</div>
+    scoreboardList.innerHTML = scoreboard.map((team, index) => {
+        const iconHtml = team.team_icon ? 
+            `<img class="team-icon-small" src="${team.team_icon}" alt="${team.team_name} icon" style="width: 24px; height: 24px; object-fit: cover; border-radius: 4px; margin-right: 10px;">` : 
+            '<span class="team-icon-placeholder-small" style="display: inline-block; width: 24px; height: 24px; background: #e9ecef; border-radius: 4px; margin-right: 10px; text-align: center; line-height: 24px; font-size: 14px; color: #6c757d; flex-shrink: 0;">?</span>';
+            
+        return `
+            <div class="score-item">
+                <div class="team-details">
+                    <div class="team-name" style="display: flex; align-items: center;">
+                        ${iconHtml}#${index + 1} ${team.team_name}
+                    </div>
+                    <div class="players-list">${team.players.join(', ')}</div>
+                </div>
+                <div class="team-score">${team.score} points</div>
             </div>
-            <div class="team-score">${team.score} points</div>
-        </div>
-    `).join('');
+        `;
+    }).join('');
 }
 
 async function loadTeams() {
@@ -422,26 +436,40 @@ function updateTeams(teams) {
         return;
     }
     
-    teamsList.innerHTML = teams.map(team => `
-        <div class="team-info" style="border: 1px solid #ddd; padding: 15px; margin: 10px 0; border-radius: 4px;">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                <div>
-                    <strong>${team.name}</strong> (${team.player_count} players)
-                    <br><em>Players: ${team.players.join(', ')}</em>
+    teamsList.innerHTML = teams.map(team => {
+        const iconHtml = team.icon ? 
+            `<img class="team-icon-small" src="${team.icon}" alt="${team.name} icon" style="width: 32px; height: 32px; object-fit: cover; border-radius: 4px; margin-right: 12px;">` : 
+            '<span class="team-icon-placeholder-small" style="display: inline-block; width: 32px; height: 32px; background: #e9ecef; border-radius: 4px; margin-right: 12px; text-align: center; line-height: 32px; font-size: 16px; color: #6c757d; flex-shrink: 0;">?</span>';
+            
+        return `
+            <div class="team-info" style="border: 1px solid #ddd; padding: 15px; margin: 10px 0; border-radius: 4px;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                    <div style="display: flex; align-items: flex-start; flex-grow: 1;">
+                        ${iconHtml}
+                        <div>
+                            <strong>${team.name}</strong> (${team.player_count} players)
+                            <br><em>Players: ${team.players.join(', ')}</em>
+                        </div>
+                    </div>
+                    <button onclick="openTeamModal('${team.id}', '${team.name}', ${JSON.stringify(team.players).replace(/"/g, '&quot;')}, '${team.icon || ''}')" 
+                            class="btn btn-primary" style="font-size: 12px; padding: 5px 10px; margin-left: 10px;">Manage</button>
                 </div>
-                <button onclick="openTeamModal('${team.id}', '${team.name}', ${JSON.stringify(team.players).replace(/"/g, '&quot;')})" 
-                        class="btn btn-primary" style="font-size: 12px; padding: 5px 10px;">Manage</button>
             </div>
-        </div>
-    `).join('');
+        `;
+    }).join('');
 }
 
 // Team management variables
 let currentTeamId = null;
 
-function openTeamModal(teamId, teamName, players) {
+function openTeamModal(teamId, teamName, players, teamIcon = '') {
     currentTeamId = teamId;
-    document.getElementById('modal-title').textContent = `Manage Team: ${teamName}`;
+    const modalTitle = document.getElementById('modal-title');
+    const iconHtml = teamIcon ? 
+        `<img src="${teamIcon}" alt="${teamName} icon" style="width: 20px; height: 20px; object-fit: cover; border-radius: 4px; margin-right: 8px; vertical-align: middle;">` : 
+        '<span style="display: inline-block; width: 20px; height: 20px; background: #e9ecef; border-radius: 4px; margin-right: 8px; vertical-align: middle; text-align: center; line-height: 20px; font-size: 12px; color: #6c757d;">?</span>';
+        
+    modalTitle.innerHTML = `${iconHtml}Manage Team: ${teamName}`;
     document.getElementById('modal-team-name').value = teamName;
     
     const playersContainer = document.getElementById('modal-players-list');

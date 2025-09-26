@@ -9,6 +9,10 @@ function setupEventListeners() {
     document.getElementById('join-team-form').addEventListener('submit', joinTeam);
     document.getElementById('cancel-join').addEventListener('click', cancelJoin);
     document.getElementById('leave-team').addEventListener('click', leaveTeam);
+    
+    // Set up icon upload functionality
+    document.getElementById('team-icon-upload').addEventListener('change', handleIconUpload);
+    document.getElementById('remove-icon').addEventListener('click', removeIcon);
 }
 
 async function loadTeams() {
@@ -31,7 +35,10 @@ function displayTeams(teams) {
     
     teamsList.innerHTML = teams.map(team => `
         <div class="team-item" onclick="selectTeam('${team.id}', '${team.name}')">
-            <div class="team-name">${team.name}</div>
+            <div class="team-header">
+                ${team.icon ? `<img class="team-icon" src="${team.icon}" alt="${team.name} icon">` : '<div class="team-icon-placeholder"></div>'}
+                <div class="team-name">${team.name}</div>
+            </div>
             <div class="team-info">${team.player_count} player(s): ${team.players.join(', ')}</div>
         </div>
     `).join('');
@@ -64,6 +71,8 @@ async function createTeam(event) {
     
     const teamName = document.getElementById('new-team-name').value;
     const playerName = document.getElementById('new-player-name').value;
+    const iconPreviewImg = document.getElementById('icon-preview-image');
+    const teamIcon = iconPreviewImg.src && iconPreviewImg.src.startsWith('data:') ? iconPreviewImg.src : null;
     
     try {
         const response = await fetch('/api/teams', {
@@ -73,7 +82,8 @@ async function createTeam(event) {
             },
             body: JSON.stringify({
                 team_name: teamName,
-                player_name: playerName
+                player_name: playerName,
+                team_icon: teamIcon
             })
         });
         
@@ -82,7 +92,7 @@ async function createTeam(event) {
         if (result.success) {
             window.location.href = '/game';
         } else {
-            alert('Error creating team');
+            alert('Error creating team: ' + (result.error || 'Unknown error'));
         }
     } catch (error) {
         console.error('Error creating team:', error);
@@ -137,7 +147,14 @@ async function checkPlayerStatus() {
 }
 
 function showCurrentTeamStatus(status) {
-    document.getElementById('current-team-name').textContent = status.team_name;
+    const teamNameElement = document.getElementById('current-team-name');
+    
+    // Create team name with icon
+    const iconHtml = status.team_icon ? 
+        `<img class="team-icon-small" src="${status.team_icon}" alt="${status.team_name} icon" style="width: 24px; height: 24px; object-fit: cover; border-radius: 4px; margin-right: 8px; vertical-align: middle;">` : 
+        '<span class="team-icon-placeholder-small" style="display: inline-block; width: 24px; height: 24px; background: #e9ecef; border-radius: 4px; margin-right: 8px; vertical-align: middle; text-align: center; line-height: 24px; font-size: 14px; color: #6c757d;">?</span>';
+    
+    teamNameElement.innerHTML = `${iconHtml}${status.team_name}`;
     document.getElementById('current-player-name').textContent = status.player_name;
     document.getElementById('current-teammates').textContent = 
         status.teammates.length > 0 ? status.teammates.join(', ') : 'None';
@@ -176,4 +193,44 @@ async function leaveTeam() {
         console.error('Error leaving team:', error);
         alert('Error leaving team');
     }
+}
+
+function handleIconUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+        alert('Please select an image file.');
+        event.target.value = '';
+        return;
+    }
+    
+    // Validate file size (max 2MB)
+    const maxSize = 2 * 1024 * 1024; // 2MB
+    if (file.size > maxSize) {
+        alert('Image file size must be less than 2MB.');
+        event.target.value = '';
+        return;
+    }
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const iconPreview = document.getElementById('icon-preview');
+        const iconPreviewImage = document.getElementById('icon-preview-image');
+        
+        iconPreviewImage.src = e.target.result;
+        iconPreview.style.display = 'block';
+    };
+    reader.readAsDataURL(file);
+}
+
+function removeIcon() {
+    const iconUpload = document.getElementById('team-icon-upload');
+    const iconPreview = document.getElementById('icon-preview');
+    const iconPreviewImage = document.getElementById('icon-preview-image');
+    
+    iconUpload.value = '';
+    iconPreviewImage.src = '';
+    iconPreview.style.display = 'none';
 }

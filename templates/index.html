@@ -39,6 +39,14 @@
                 <form id="create-team-form">
                     <input type="text" id="new-team-name" placeholder="Team Name" required>
                     <input type="text" id="new-player-name" placeholder="Your Name" required>
+                    <div class="icon-upload-section">
+                        <label for="team-icon-upload">Team Icon (optional):</label>
+                        <input type="file" id="team-icon-upload" accept="image/*">
+                        <div id="icon-preview" class="icon-preview" style="display: none;">
+                            <img id="icon-preview-image" alt="Team Icon Preview">
+                            <button type="button" id="remove-icon">Remove Icon</button>
+                        </div>
+                    </div>
                     <button type="submit">Create Team</button>
                 </form>
             </div>

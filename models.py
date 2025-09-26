@@ -4,19 +4,24 @@ import time
 import threading
 
 class Team:
-    def __init__(self, name, team_id=None):
+    def __init__(self, name, team_id=None, icon=None):
         self.id = team_id or str(uuid.uuid4())
         self.name = name
+        self.icon = icon  # Base64 encoded image or file path
         self.players = []
         self.score = 0
         self.answers = {}
         self.created_at = datetime.now()
     
     def add_player(self, player_name):
-        if player_name not in self.players:
-            self.players.append(player_name)
-            return True
-        return False
+        # Case-insensitive check for duplicate names within the team
+        player_name_lower = player_name.lower().strip()
+        for existing_player in self.players:
+            if existing_player.lower().strip() == player_name_lower:
+                return False  # Duplicate name within same team
+        
+        self.players.append(player_name)
+        return True
     
     def remove_player(self, player_name):
         if player_name in self.players:
@@ -31,6 +36,7 @@ class Team:
         return {
             'id': self.id,
             'name': self.name,
+            'icon': self.icon,
             'players': self.players,
             'score': self.score,
             'player_count': len(self.players)
@@ -68,16 +74,30 @@ class TriviaGame:
         self.timer_expired_callbacks = []  # Called when timer expires
         self.answer_times = {}  # Store when each team answered: {question_index: {team_id: timestamp}}
     
-    def create_team(self, team_name, player_name):
-        team = Team(team_name)
+    def create_team(self, team_name, player_name, icon=None):
+        team = Team(team_name, icon=icon)
         team.add_player(player_name)
         self.teams[team.id] = team
-        return team.id
+        return {'success': True, 'team_id': team.id}
     
     def join_team(self, team_id, player_name):
-        if team_id in self.teams:
-            return self.teams[team_id].add_player(player_name)
-        return False
+        if team_id not in self.teams:
+            return {'success': False, 'error': 'Team not found'}
+        
+        team = self.teams[team_id]
+        
+        # Check if player name already exists in THIS team (case-insensitive)
+        player_name_lower = player_name.lower().strip()
+        for existing_player in team.players:
+            if existing_player.lower().strip() == player_name_lower:
+                return {'success': False, 'error': 'You are already a member of this team'}
+        
+        # Add player to team
+        success = team.add_player(player_name)
+        if success:
+            return {'success': True}
+        else:
+            return {'success': False, 'error': 'Failed to join team'}
     
     def leave_team(self, team_id, player_name):
         if team_id in self.teams:
@@ -92,9 +112,12 @@ class TriviaGame:
         return False
     
     def find_player_team(self, player_name):
+        # Case-insensitive search for player name
+        player_name_lower = player_name.lower().strip()
         for team_id, team in self.teams.items():
-            if player_name in team.players:
-                return team_id
+            for existing_player in team.players:
+                if existing_player.lower().strip() == player_name_lower:
+                    return team_id
         return None
     
     def get_teams(self):
@@ -192,6 +215,7 @@ class TriviaGame:
         for team in self.teams.values():
             scoreboard.append({
                 'team_name': team.name,
+                'team_icon': team.icon,
                 'score': team.score,
                 'players': team.players
             })
@@ -263,6 +287,7 @@ class TriviaGame:
                 answer_data = {
                     'team_id': team_id,
                     'team_name': team.name,
+                    'team_icon': team.icon,
                     'has_answered': has_answered,
                     'submitted_answer': None,
                     'is_correct': None
