@@ -10,6 +10,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>Admin Login - Trivia Game</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
 </head>
 <body>
     <div class="container">
@@ -26,7 +27,7 @@
             {% endif %}
             
             <div style="text-align: center; margin-top: 20px;">
-                <a href="/">Back to Game</a>
+                <a href="/" style="color: var(--netflix-red); text-decoration: none;">Back to Game</a>
             </div>
         </div>
     </div>
